@@ -1,0 +1,8 @@
+DEFAULT debian12-local
+PROMPT 0
+TIMEOUT 20
+
+LABEL debian12-local
+    MENU LABEL Install Debian 12 from local ISO image
+    KERNEL debian12/linux
+    APPEND initrd=debian12/initrd.gz auto=true priority=critical preseed/url=http://10.168.10.98/preseed/debian12.cfg cdrom-detect/try-usb=false
