@@ -38,7 +38,7 @@ d-i passwd/username string adasbox
 d-i passwd/user-password password 123456
 d-i passwd/user-password-again password 123456
 
-### 清除磁碟殘留 GPT 分割資訊 ###
+### 提前清除磁碟 GPT 分割資訊 ###
 d-i partman/early_command string \
   dd if=/dev/zero of=/dev/sda bs=512 count=204800
 
@@ -49,41 +49,21 @@ d-i partman-partitioning/choose_label string gpt
 d-i partman-partitioning/default_label string gpt
 d-i partman-auto/choose_recipe select customuefi
 
-### 自訂分割方案（含 EFI 分割但不掛載）###
+### 分割方案（UEFI）###
 d-i partman-auto/expert_recipe string \
   customuefi :: \
     512 512 512 fat32 \
-      $primary{ } \
+      $primary{ }  \
       method{ efi } format{ } \
       use_filesystem{ } filesystem{ fat32 } \
 #      mountpoint{ /boot/efi } \
     . \
-    3072000 3072000 3072000 ext4 \
+    102400 102400 102400 ext4 \
       method{ format } format{ } \
       use_filesystem{ } filesystem{ ext4 } \
       mountpoint{ / } \
     . \
-    204800 204800 204800 ext4 \
-      method{ format } format{ } \
-      use_filesystem{ } filesystem{ ext4 } \
-      mountpoint{ /home } \
-    . \
-    512000 512000 512000 ext4 \
-      method{ format } format{ } \
-      use_filesystem{ } filesystem{ ext4 } \
-      mountpoint{ /var } \
-    . \
-    102400 102400 102400 ext4 \
-      method{ format } format{ } \
-      use_filesystem{ } filesystem{ ext4 } \
-      mountpoint{ /tmp } \
-    . \
-    199680 199680 199680 ext4 \
-      method{ format } format{ } \
-      use_filesystem{ } filesystem{ ext4 } \
-      mountpoint{ /usr } \
-    . \
-    5120 5120 5120 linux-swap \
+    81920 81920 81920 linux-swap \
       method{ swap } format{ } \
     .
 
@@ -100,21 +80,15 @@ d-i pkgsel/include string openssh-server qemu-kvm cockpit cockpit-machines sudo 
 ### GRUB 安裝（UEFI）###
 d-i grub-installer/only_debian boolean true
 d-i grub-installer/with_other_os boolean true
+d-i grub-installer/efi_partition string /boot/efi
 d-i grub-installer/targetarch string amd64
 d-i grub-installer/bootdev string default
-# 不指定 /boot/efi 避免觸發掛載錯誤
-# d-i grub-installer/efi_partition string /boot/efi
 
 ### 安裝完成後自動重啟 ###
 d-i finish-install/reboot_in_progress note
 
 ### 安裝後指令 ###
 d-i preseed/late_command string \
-  GRUB_PASSWORD_HASH='grub.pbkdf2.sha512.10000.C61B257DECA07F1899B838889A2AC10C9F17556A41E06DE7BE9E2F2A4E20F9EECF8059912501B4B4084E18A1E27E98099F6A9BD4D5C379AEAF49E3B0503F3FC1'; \
-  echo 'set superuser="admin"' >> /target/etc/grub.d/40_custom; \
-  echo "password_pbkdf2 admin ${GRUB_PASSWORD_HASH}" >> /target/etc/grub.d/40_custom; \
-  sed -i 's/^GRUB_DISABLE_RECOVERY=.*/GRUB_DISABLE_RECOVERY=true/' /target/etc/default/grub || echo 'GRUB_DISABLE_RECOVERY=true' >> /target/etc/default/grub; \
-  in-target update-grub; \
   in-target systemctl enable cockpit.socket; \
   in-target usermod -aG sudo adasbox; \
   in-target echo 'Install OK' > /root/install-done.log
