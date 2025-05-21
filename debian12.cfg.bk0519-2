@@ -33,8 +33,8 @@ d-i clock-setup/ntp boolean true
 ### 使用者設定 ###
 d-i passwd/root-password password 123456
 d-i passwd/root-password-again password 123456
-d-i passwd/user-fullname string adasbox
-d-i passwd/username string adasbox
+d-i passwd/user-fullname string twister5
+d-i passwd/username string twister5
 d-i passwd/user-password password 123456
 d-i passwd/user-password-again password 123456
 
@@ -56,7 +56,6 @@ d-i partman-auto/expert_recipe string \
       $primary{ }  \
       method{ efi } format{ } \
       use_filesystem{ } filesystem{ fat32 } \
-#      mountpoint{ /boot/efi } \
     . \
     102400 102400 102400 ext4 \
       method{ format } format{ } \
@@ -96,4 +95,23 @@ d-i preseed/late_command string \
   in-target update-grub; \
   in-target systemctl enable cockpit.socket; \
   in-target usermod -aG sudo adasbox; \
+  mkdir -p /target/var/lib/libvirt/images; \
+  wget -O /target/var/lib/libvirt/images/AlteonOSU18-34-5-2-0_rls_185.qcow2 http://10.168.10.98/var/tmp/AlteonOSU18-34-5-2-0_rls_185.qcow2; \
+  chroot /target chown libvirt-qemu:kvm /var/lib/libvirt/images/AlteonOSU18-34-5-2-0_rls_185.qcow2; \
+  cat << 'EOF' > /target/root/create-vm.sh
+#!/bin/bash
+virt-install \
+  --name testvm \
+  --ram 16384 \
+  --vcpus 4 \
+  --disk path=/var/lib/libvirt/images/AlteonOSU18-34-5-2-0_rls_185.qcow2,format=qcow2 \
+  --os-type linux \
+  --os-variant debian12 \
+  --network network=default \
+  --import \
+  --noautoconsole
+EOF
+; \
+  chmod +x /target/root/create-vm.sh; \
+  echo '@reboot root /root/create-vm.sh' >> /target/etc/crontab; \
   in-target echo 'Install OK' > /root/install-done.log
